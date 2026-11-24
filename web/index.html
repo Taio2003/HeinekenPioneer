@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#205527">
+  <title>Heineken Pioneer – Foto</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script>
+    // Intro solo alla prima visita della sessione e se l'utente non ha chiesto meno animazioni.
+    try {
+      if (!sessionStorage.getItem("hnk-intro") && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        document.documentElement.classList.add("intro");
+      }
+    } catch (e) {}
+  </script>
+  <!-- env.js lo crea il container all'avvio (indirizzo segreto delle foto); in locale non esiste. -->
+  <script src="/assets/env.js"></script>
+  <script src="/assets/config.js"></script>
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body data-page="home">
+  <header class="topbar">
+    <div class="topbar-id">
+      <a class="brand" href="/"><img class="brand-logo" src="/assets/logo.svg" alt="Heineken – Pioneer. Grow. Together."></a>
+    </div>
+    <div class="topbar-actions">
+      <span id="totals" class="totals"></span>
+      <a id="zip-all" class="btn btn-primary" hidden>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        <span class="label">Scarica tutto</span>
+      </a>
+    </div>
+  </header>
+
+  <dialog id="confirm-zip" class="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title">Scaricare tutte le foto?</h2>
+      <p id="confirm-text"></p>
+      <div class="confirm-actions">
+        <button class="btn" value="cancel" type="submit">Annulla</button>
+        <button class="btn btn-primary" value="ok" type="submit" autofocus>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+          Scarica
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <main class="folders" id="folders" aria-label="Cartelle"></main>
+  <p id="status" class="status"></p>
+
+  <div class="intro-overlay" id="intro" aria-hidden="true">
+    <img src="/assets/logo-animato.svg" alt="">
+  </div>
+</body>
+</html>

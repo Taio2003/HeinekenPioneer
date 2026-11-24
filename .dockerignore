@@ -1,0 +1,14 @@
+# Nell'immagine serve solo il sito: niente foto di prova (decine di GB), strumenti, segreti
+# né i file di configurazione di altri hosting (serve.json, _headers, _redirects).
+web/_r2
+tools
+.git
+.claude
+*.md
+.env
+web/serve.json
+web/_headers
+web/_redirects
+web/assets/env.js
+
+FOTO

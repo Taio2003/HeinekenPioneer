@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Foto</title>
+  <meta name="theme-color" content="#205527">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Inter+Tight:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/style.css">
+  <!-- env.js lo crea il container all'avvio (indirizzo segreto delle foto); in locale non esiste. -->
+  <script src="/assets/env.js"></script>
+  <script src="/assets/config.js"></script>
+  <script type="module" src="/assets/app.js"></script>
+</head>
+<body data-page="folder">
+  <header class="topbar">
+    <div class="topbar-id">
+      <a class="back-icon" href="/" aria-label="Torna alle cartelle">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </a>
+      <a class="brand" href="/"><img class="brand-logo" src="/assets/logo.svg" alt="Heineken – Pioneer. Grow. Together."></a>
+      <span class="divider" aria-hidden="true"></span>
+      <nav class="crumbs" aria-label="Percorso">
+        <a href="/" class="crumb-home">Cartelle</a>
+        <svg class="icon crumb-sep" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+        <span class="crumb-current">
+          <!-- Il nome della cartella apre il pannello con le altre cartelle. -->
+          <button id="folder-switch" class="crumb-name" type="button" aria-haspopup="dialog">
+            <strong id="folder-name">…</strong>
+            <svg class="icon crumb-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <span id="folder-meta" class="crumb-meta"></span>
+        </span>
+      </nav>
+    </div>
+    <div class="topbar-actions">
+      <a id="zip-folder" class="btn btn-primary" hidden>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        <span class="label">Scarica cartella</span>
+      </a>
+    </div>
+  </header>
+
+
+  <dialog id="confirm-zip" class="confirm" aria-labelledby="confirm-title">
+    <form method="dialog">
+      <h2 id="confirm-title"></h2>
+      <p id="confirm-text"></p>
+      <div class="confirm-actions">
+        <button class="btn" value="cancel" type="submit">Annulla</button>
+        <button class="btn btn-primary" value="ok" type="submit" autofocus>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+          Scarica
+        </button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="folder-sheet" class="sheet" aria-labelledby="sheet-title">
+    <div class="sheet-handle" aria-hidden="true"></div>
+    <div class="sheet-head">
+      <h2 id="sheet-title">Cartelle</h2>
+      <button class="sheet-close" type="button" aria-label="Chiudi">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <nav id="sheet-list" class="sheet-list" aria-label="Cartelle"></nav>
+  </dialog>
+
+  <main id="gallery" class="gallery" aria-label="Foto"></main>
+  <p id="status" class="status"></p>
+
+
+
+  <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Foto">
+    <div class="lb-top">
+      <div class="lb-title">
+        <strong id="lb-folder"></strong>
+        <span id="lb-count"></span>
+      </div>
+      <button class="lb-close round" type="button" aria-label="Chiudi">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div class="lb-main">
+      <button class="lb-prev round" type="button" aria-label="Foto precedente">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+      </button>
+      <figure class="lb-stage"><img alt=""></figure>
+      <button class="lb-next round" type="button" aria-label="Foto successiva">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+    </div>
+    <p class="lb-hint">Scorri per cambiare foto</p>
+    <div class="lb-bottom">
+      <div class="lb-file">
+        <strong id="lb-name"></strong>
+        <span id="lb-info"></span>
+      </div>
+      <a id="lb-download" class="btn btn-light">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+        Scarica originale
+      </a>
+    </div>
+  </div>
+</body>
+</html>
