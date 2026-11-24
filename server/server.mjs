@@ -154,9 +154,10 @@ function send(res, status, body, headers = {}) {
 }
 
 function loginPage(res, status, { error = "", next = "/" } = {}) {
-  const html = LOGIN_PAGE.replace("{{ERROR}}", error ? `<p class="error" role="alert">${error}</p>` : "")
-    .replace("{{ERROR_CLASS}}", error ? "has-error" : "")
-    .replace("{{NEXT}}", escapeAttr(next));
+  // Replacer functions: a "$'" or "$&" in the requested path must not be expanded by String.replace.
+  const html = LOGIN_PAGE.replace("{{ERROR}}", () => (error ? `<p class="error" role="alert">${error}</p>` : ""))
+    .replace("{{ERROR_CLASS}}", () => (error ? "has-error" : ""))
+    .replace("{{NEXT}}", () => escapeAttr(next));
   send(res, status, html, { "Content-Type": TYPES[".html"], "Cache-Control": "no-store" });
 }
 
