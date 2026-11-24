@@ -5,10 +5,12 @@
 //   PORT           porta (predefinita 80)
 //   COOKIE_INSECURE=1  solo per prove in locale senza https
 
+import assert from "node:assert/strict";
 import { createHmac, createHash, scryptSync, timingSafeEqual } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { readFile, stat } from "node:fs/promises";
 import http from "node:http";
+import { BlockList, isIP } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -69,8 +71,52 @@ const MAX_GLOBAL = 200;
 const failures = new Map(); // ip -> [timestamp…]
 let globalFailures = [];
 
-const clientIp = (req) =>
-  req.headers["cf-connecting-ip"] || String(req.headers["x-forwarded-for"] || "").split(",")[0].trim() || req.socket.remoteAddress;
+// Indirizzo di chi tenta il login. Le intestazioni valgono solo se le ha scritte chi può farlo davvero:
+// - collegamento diretto da un indirizzo pubblico: nessun proxy davanti, conta quello;
+// - da Traefik (rete interna): l'ultimo X-Forwarded-For è chi si è collegato a Traefik;
+// - se quello è Cloudflare (o cloudflared in rete interna) vale cf-connecting-ip, che Cloudflare riscrive.
+// Chi raggiunge il server senza passare da Cloudflare non può quindi inventarsi un indirizzo.
+const subnets = (list) => {
+  const b = new BlockList();
+  for (const c of list) {
+    const [net, bits] = c.split("/");
+    b.addSubnet(net, Number(bits), isIP(net) === 6 ? "ipv6" : "ipv4");
+  }
+  return b;
+};
+const INTERNAL = subnets(["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8", "fc00::/7", "::1/128"]);
+// https://www.cloudflare.com/ips (novembre 2026)
+const CLOUDFLARE = subnets([
+  "173.245.48.0/20", "103.21.244.0/22", "103.22.200.0/22", "103.31.4.0/22", "141.101.64.0/18", "108.162.192.0/18",
+  "190.93.240.0/20", "188.114.96.0/20", "197.234.240.0/22", "198.41.128.0/17", "162.158.0.0/15", "104.16.0.0/13",
+  "104.24.0.0/14", "172.64.0.0/13", "131.0.72.0/22", "2400:cb00::/32", "2606:4700::/32", "2803:f800::/32",
+  "2405:b500::/32", "2405:8100::/32", "2a06:98c0::/29", "2c0f:f248::/32",
+]);
+
+const plainIp = (ip) => String(ip || "").trim().replace(/^::ffff:(?=\d+\.\d+\.\d+\.\d+$)/i, "");
+const inList = (list, ip) => isIP(ip) !== 0 && list.check(ip, isIP(ip) === 6 ? "ipv6" : "ipv4");
+
+// Con IPv6 una persona ha di solito un intero /64: si conta il blocco, non il singolo indirizzo.
+function ipKey(ip) {
+  if (isIP(ip) !== 6) return ip;
+  const [head, tail = ""] = ip.toLowerCase().split("::");
+  const h = head ? head.split(":") : [];
+  const zeros = Math.max(0, 8 - h.length - (tail ? tail.split(":").length : 0));
+  return [...h, ...Array(zeros).fill("0")].slice(0, 4).map((g) => parseInt(g || "0", 16).toString(16)).join(":") + "::/64";
+}
+assert.equal(ipKey("2001:db8:1:2::5"), "2001:db8:1:2::/64");
+assert.equal(ipKey("2001:0db8:0001:0002:aaaa:bbbb:cccc:dddd"), "2001:db8:1:2::/64");
+assert.equal(ipKey("2001:db8::1"), "2001:db8:0:0::/64");
+assert.equal(ipKey("1.2.3.4"), "1.2.3.4");
+
+function clientIp(req) {
+  const peer = plainIp(req.socket.remoteAddress);
+  if (!inList(INTERNAL, peer)) return ipKey(peer);
+  const hop = plainIp(String(req.headers["x-forwarded-for"] || "").split(",").pop()) || peer;
+  const cf = plainIp(req.headers["cf-connecting-ip"]);
+  const viaCloudflare = inList(INTERNAL, hop) || inList(CLOUDFLARE, hop);
+  return ipKey(viaCloudflare && isIP(cf) ? cf : hop);
+}
 
 function blocked(ip) {
   const now = Date.now();
@@ -128,7 +174,26 @@ setInterval(() => {
 
 /* ---------- Risposte ---------- */
 
+// Script in linea ammessi solo se sono quelli delle nostre pagine (impronta calcolata all'avvio).
+const INLINE_SCRIPTS = [LOGIN_PAGE, ...(await Promise.all(["index.html", "cartella.html"].map((f) => readFile(path.join(WEB, f), "utf8"))))]
+  .flatMap((html) => [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)])
+  .map((m) => `'sha256-${createHash("sha256").update(m[1]).digest("base64")}'`);
+const PHOTO_ORIGIN = new URL(PHOTO_BASE).origin;
+const CSP = [
+  "default-src 'self'",
+  `script-src 'self' ${INLINE_SCRIPTS.join(" ")}`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src https://fonts.gstatic.com",
+  `img-src 'self' data: blob: ${PHOTO_ORIGIN}`,
+  `connect-src 'self' ${PHOTO_ORIGIN}`,
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const SECURITY_HEADERS = {
+  "Content-Security-Policy": CSP,
   "X-Content-Type-Options": "nosniff",
   "X-Frame-Options": "DENY",
   "Referrer-Policy": "same-origin",
@@ -195,7 +260,7 @@ async function serveFile(req, res, urlPath) {
     "Cache-Control": PUBLIC.has(urlPath) ? "public, max-age=86400" : cache,
   });
   if (req.method === "HEAD") return res.end();
-  createReadStream(abs).pipe(res);
+  createReadStream(abs).on("error", () => res.destroy()).pipe(res);
 }
 
 class TooLarge extends Error {}
